@@ -1,0 +1,44 @@
+name: 1. Quality Gate com IA
+
+on: [push, pull_request]
+
+jobs:
+  executar-validacao:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências (Pytest e IA)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov google-genai requests
+
+      - name: Rodar os Testes e Salvar o Resultado
+        run: |
+          mkdir -p src tests
+          echo "def calcular_total(p): return sum(p) if p else 0" > src/app.py
+          echo -e "from src.app import calcular_total\ndef test_carrinho(): assert calcular_total([10]) == 10" > tests/test_app.py
+          pytest --cov=src --cov-report=term-missing > coverage.txt || true
+          cat coverage.txt
+
+      - name: Chamar Inteligência Artificial
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          cat << 'EOF' > src/analyze_coverage.py
+          import sys, os
+          from google import genai
+          try:
+              with open("coverage.txt", "r") as f: relatorio = f.read()
+          except: sys.exit(1)
+          client = genai.Client(api_key=os.getenv("AI_API_KEY"))
+          resposta = client.models.generate_content(model='gemini-2.5-flash', contents=f"Analise e responda apenas 'APROVADO' se a cobertura for boa:\n{relatorio}")
+          print(resposta.text)
+          EOF
+          python src/analyze_coverage.py
