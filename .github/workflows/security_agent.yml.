@@ -1,0 +1,60 @@
+name: 3. Agente de Segurança Autônomo
+
+on: [push, workflow_dispatch]
+
+jobs:
+  auditoria-seguranca:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Dependências
+        run: pip install google-genai
+
+      - name: Rodar Análise do Agente de Segurança
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          cat << 'EOF' > seguranca.py
+          import os, sys
+          from google import genai
+          
+          # Ler o arquivo de código para a IA analisar
+          with open("src/app.py", "r") as f: codigo = f.read()
+          
+          client = genai.Client(api_key=os.getenv("AI_API_KEY"))
+          
+          prompt = f"""
+          Você é o Agente de Segurança Autônomo da SmartShop Cloud.
+          Analise o código Python fornecido e procure por falhas críticas (como senhas expostas/hardcoded).
+          Gere um relatório curto em formato Markdown para uma issue contendo:
+          1. Classificação de Risco (Baixo, Médio, Alto, Crítico)
+          2. Vulnerabilidade encontrada
+          3. Sugestão de código corrigido.
+          
+          Código para análise:
+          {codigo}
+          """
+          
+          resposta = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+          
+          with open("relatorio_seguranca.txt", "w") as f:
+              f.write(resposta.text)
+          print("🛡️ Auditoria concluída pelo agente!")
+          EOF
+          python seguranca.py
+
+      - name: Abrir Chamado de Segurança
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🛡️ [Agente Segurança] Vulnerabilidade Crítica Encontrada" \
+            --body-file relatorio_seguranca.txt \
+            --label "bug"
