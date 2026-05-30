@@ -1,0 +1,1 @@
+# smartshop-devops-ai
