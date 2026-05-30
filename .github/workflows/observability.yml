@@ -1,0 +1,62 @@
+name: 2. Observabilidade Inteligente
+
+on: [push, workflow_dispatch]
+
+jobs:
+  monitoramento-ia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Dependências
+        run: pip install google-genai
+
+      - name: Analisar Logs e Métricas com IA
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          cat << 'EOF' > analisar_sistema.py
+          import os, sys, json
+          from google import genai
+          
+          # Lendo os arquivos dentro das respectivas pastas
+          with open("logs/app.log", "r") as f: logs = f.read()
+          with open("metrics/metrics.json", "r") as f: metrics = f.read()
+          
+          client = genai.Client(api_key=os.getenv("AI_API_KEY"))
+          
+          prompt = f"""
+          Você é o Agente de Observabilidade da SmartShop Cloud.
+          Analise estes Logs e Métricas e crie um relatório curto de incidentes em formato Markdown se encontrar falhas críticas ou lentidão extrema.
+          
+          LOGS:
+          {logs}
+          
+          MÉTRICAS:
+          {metrics}
+          """
+          
+          resposta = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+          
+          if "CRITICAL" in logs or "92" in metrics:
+              with open("incidente.txt", "w") as f:
+                  f.write(resposta.text)
+              print("🚨 Alerta gerado pela IA!")
+          EOF
+          python analisar_sistema.py
+
+      - name: Abrir Issue Automática em caso de Erro
+        if: hashFiles('incidente.txt') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🚨 [IA Agente] Incidente de Infraestrutura Detectado" \
+            --body-file incidente.txt \
+            --label "bug"
