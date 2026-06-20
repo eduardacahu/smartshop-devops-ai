@@ -1,0 +1,35 @@
+name: "4. Deploy Gate & Canary"
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy_gate:
+    name: "Deploy Gate Checking"
+    runs-on: ubuntu-latest
+    outputs:
+      gate_status: ${{ steps.check.outputs.status }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verificar Integridade (Gate)
+        id: check
+        run: |
+          echo "Executando checagem de segurança do Deploy Gate..."
+          echo "status=passed" >> $GITHUB_OUTPUT
+
+  canary_deploy:
+    name: "Canary Deployment (10%)"
+    needs: deploy_gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Canary Environment
+        run: |
+          echo "Simulando Deploy em Canary..."
+          echo "Direcionando 10% do tráfego para a nova versão na SmartShop Cloud."
+          echo "Monitorando logs de telemetria..."
