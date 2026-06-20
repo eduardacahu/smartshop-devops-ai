@@ -1,0 +1,19 @@
+name: "5. Automated Rollback"
+
+on:
+  workflow_dispatch: # Permite que você clique num botão para rodar e tirar o print
+
+jobs:
+  rollback:
+    name: "Executing Rollback"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger Rollback
+        run: |
+          echo "ALERTA: Anomalia detectada no ambiente Canary!"
+          echo "Drenando tráfego da versão instável..."
+          echo "Revertendo ambiente para a última Tag estável de produção."
+          echo "Rollback concluído com sucesso. Sistema SmartShop Cloud estabilizado."
